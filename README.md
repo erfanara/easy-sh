@@ -9,6 +9,8 @@ Just another shell that just works. This project is for educational purposes.
 
 ## tasks
 - [x] Command execution
+- [ ] Command not found
+- [ ] Command executed correctly 
 - [ ] Built-in functions
   - [ ] a (equivalant: `awk '{print $1}' test | grep -v "^$"`)
   - [ ] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
