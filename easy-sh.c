@@ -36,9 +36,9 @@ char *get_newline(char *line, size_t *len) {
 void split_to_argv(char *str, char *argv[]) {
   char *token;
   int i = 0;
-  // TODO: strsep compatbility with windows
-  while ((token = strsep(&str, " "))) {
-    if (*token != '\0')
+  // TODO: check strsep compatbility with windows
+  while ((token = strsep(&str, " \t\0"))) {
+    if (*token != '\0' && *token != '\t')
       argv[i++] = token;
   }
   argv[i] = NULL;
