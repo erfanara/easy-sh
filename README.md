@@ -16,7 +16,8 @@ Just another shell that just works. This project is for educational purposes.
   - [ ] d (equivalant: `grep -v "\s*#" file`)
   - [ ] f (equivalant: `wc -l file`)
   - [ ] g (equivalant: `head -n10 file`)
-- [ ] prompt (pwd)
+  - [ ] cd
+- [ ] prompt (pwd, cd)
 - [ ] print errors in stderr
 - [ ] commands history (store commands in .hist)
 ---
