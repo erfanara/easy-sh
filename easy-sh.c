@@ -38,7 +38,8 @@ void split_to_argv(char *str, char *argv[]) {
   int i = 0;
   // TODO: strsep compatbility with windows
   while ((token = strsep(&str, " "))) {
-    argv[i++] = token;
+    if (*token != '\0')
+      argv[i++] = token;
   }
   argv[i] = NULL;
 }
