@@ -5,13 +5,15 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
+#include "./colors.h"
 
 // TODO: dynamic buffer ?
 #define BUF_LIMIT 50000
 #define ARGS_LIMIT 5000
-
+pid_t pid = -1;
 int run_command(char *const file, char *const *argv) {
-  pid_t pid = fork();
+  pid = fork();
   int status;
 
   if (pid < 0) { /* error occurred */
@@ -43,6 +45,10 @@ void split_to_argv(char *str, char *argv[]) {
   }
   argv[i] = NULL;
 }
+void fcprintf(char* str, char* color, char* after_color){
+
+        fprintf(stdout,"%s%s%s",color,str,after_color);
+}
 
 int main(int argc, char *argv[]) {
   char *buf = malloc(sizeof(char) * BUF_LIMIT);
@@ -53,9 +59,20 @@ int main(int argc, char *argv[]) {
   while (1) {
     if (get_newline(buf, &strlen) != NULL) {
       split_to_argv(buf, cmd_argv);
-      run_command(cmd_argv[0], cmd_argv);
+      if(!strcmp(cmd_argv[0],"exit")) break;
+      else{
+        run_command(cmd_argv[0], cmd_argv);
+        //if errno == 2, then it means theres no such file or directory, in other words, command not found 
+        if(!pid && errno == 2){// we exec this on child process, because we want to kill the child after printing err
+          fcprintf("command not found!\n", RED , RESET);
+          /* printf("%d\n",errno); 
+           printf("%s:%d\n",cmd_argv[0] ,pid); */
+          exit(127);
+        }
+      }
     }
   }
-
+  
   free(buf);
+  exit(0);
 }
