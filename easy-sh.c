@@ -57,23 +57,23 @@ int main(int argc, char *argv[]) {
   char *cmd_argv[ARGS_LIMIT];
 
   while (1) {
-    if (get_newline(buf, &strlen) != NULL) {
-      // store all commands to .hist file TODO: handle max count of commands in history
-      history = fopen(".hist", "a+");
-      fprintf(history,"%s\n", buf);
-      fclose(history);
-      split_to_argv(buf, cmd_argv);
-      if(!strcmp(cmd_argv[0],"exit")) break;
-      else{
-        run_command(cmd_argv[0], cmd_argv);
-        //if errno == 2, then it means theres no such file or directory, in other words, command not found 
-        if(!pid && errno == 2){// we exec this on child process, because we want to kill the child after printing err
-        fprintf(stdout,"%s%s: command not found!%s\n",RED,cmd_argv[0],RESET);
-          /* printf("%d\n",errno); 
-           printf("%s:%d\n",cmd_argv[0] ,pid); */
-          exit(127);
+    if (get_newline(buf, &strlen) != NULL && buf[0] != '\0') {
+        // store all commands to .hist file TODO: handle max count of commands in history
+        history = fopen(".hist", "a+");
+        fprintf(history,"%s\n", buf);
+        fclose(history);
+        split_to_argv(buf, cmd_argv);
+        if(!strcmp(cmd_argv[0],"exit")) break;
+        else{
+          run_command(cmd_argv[0], cmd_argv);
+          //if errno == 2, then it means theres no such file or directory, in other words, command not found 
+          if(!pid && errno == 2){// we exec this on child process, because we want to kill the child after printing err
+          fprintf(stdout,"%s%s: command not found!%s\n",RED,cmd_argv[0],RESET);
+            /* printf("%d\n",errno); 
+             printf("%s:%d\n",cmd_argv[0] ,pid); */
+            exit(127);
+          }
         }
-      }
     }
   }
   free(buf);
