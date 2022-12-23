@@ -22,7 +22,7 @@ Just another shell that just works. This project is for educational purposes.
   - [x] exit command (should exit the shell)
 - [ ] prompt (pwd, cd)
 - [ ] print errors in stderr
-- [ ] commands history (store commands in .hist)
+- [x] commands history (store commands in .hist)
 ---
 - [ ] ctrl+c (SIGTERM)
 - [ ] up and down keys (navigate over commands history)
