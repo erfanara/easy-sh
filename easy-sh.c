@@ -14,8 +14,13 @@
 // TODO: dynamic buffer ?
 #define BUF_LIMIT 50000
 #define ARGS_LIMIT 5000
+
+void fcprintf(FILE *restrict stream, char* str, char* color, char* after_color){
+        fprintf(stream, "%s%s%s", color, str, after_color);
+}
+
 pid_t pid = -1;
-int run_command(char *const file, char *const *argv) {
+void run_command(char *const file, char *const *argv) {
   pid = fork();
   int status;
 
@@ -26,7 +31,33 @@ int run_command(char *const file, char *const *argv) {
   } else { /* parent waiting */
     pid = wait(&status);
   }
-  return status;
+
+  if(status){
+    switch (errno) {
+      default:
+        if(!pid)
+          fprintf(stderr, "%serrno %i occurred!\n%s" , RED, errno, RESET);
+        break;
+      case ENOENT:
+        if(!pid)
+          fcprintf(stderr, "Command not found!\n", RED, RESET);
+        break;
+      case EACCES:
+        if(!pid)
+          fcprintf(stderr, "Permission denied!\n", RED, RESET);
+        break;
+      case ELOOP:
+        if(!pid)
+          fcprintf(stderr, "A loop exists in symbolic links (Maximum recursion limit exceeded)!\n", RED, RESET);
+        break;
+      case ENAMETOOLONG:
+        if(!pid)
+          fcprintf(stderr, "Path too long!\n", RED, RESET);
+        break;
+    }
+    if(!pid)
+      exit(-1);
+  }
 }
 
 char *get_newline(char *line, size_t *len) {
@@ -47,32 +78,29 @@ void split_to_argv(char *str, char *argv[]) {
   }
   argv[i] = NULL;
 }
-void fcprintf(FILE *restrict stream, char* str, char* color, char* after_color){
-        fprintf(stream, "%s%s%s", color, str, after_color);
-}
 
 
 // Built-ins
 void cd(char* path){
   int status = chdir(path);
-  if(status==-1){
+  if(status){
     switch (errno) {
       default:
         break;
       case EACCES:
-        fcprintf(stderr, "Permission denied!", RED, RESET);
+        fcprintf(stderr, "Permission denied!\n", RED, RESET);
         break;
       case ELOOP:
-        fcprintf(stderr, "A loop exists in symbolic links!", RED, RESET);
+        fcprintf(stderr, "A loop exists in symbolic links (Maximum recursion limit exceeded)!\n", RED, RESET);
         break;
       case ENAMETOOLONG:
-        fcprintf(stderr, "Path too long!", RED, RESET);
+        fcprintf(stderr, "Path too long!\n", RED, RESET);
         break;
       case ENOENT:
-        fcprintf(stderr, "Wrong path!", RED, RESET);
+        fcprintf(stderr, "Wrong path!\n", RED, RESET);
         break;
       case ENOTDIR:
-        fcprintf(stderr, "Not a directory!", RED, RESET);
+        fcprintf(stderr, "Not a directory!\n", RED, RESET);
         break;
     }
   }
@@ -98,13 +126,6 @@ int main(int argc, char *argv[]) {
           cd(cmd_argv[1]);
         }else{
           run_command(cmd_argv[0], cmd_argv);
-          //if errno == 2, then it means theres no such file or directory, in other words, command not found 
-          if(!pid && errno == 2){// we exec this on child process, because we want to kill the child after printing err
-            fprintf(stderr,"%s%s: command not found!%s\n",RED,cmd_argv[0],RESET);
-            /* printf("%d\n",errno); 
-             printf("%s:%d\n",cmd_argv[0] ,pid); */
-            exit(127);
-          }
         }
     }
   }
