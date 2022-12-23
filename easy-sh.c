@@ -21,6 +21,7 @@ void fcprintf(FILE *restrict stream, char* str, char* color, char* after_color){
 
 pid_t pid = -1;
 void run_command(char *const file, char *const *argv) {
+  // TODO: handle errno
   pid = fork();
   int status;
 
@@ -106,11 +107,21 @@ void cd(char* path){
   }
 }
 
+void prompt(char* cwd){
+  fprintf(stdout, "%s%s> %s",GRN ,cwd, RESET);
+  fflush(stdout);
+}
+
 int main(int argc, char *argv[]) {
   char *buf = malloc(sizeof(char) * BUF_LIMIT);
   size_t strlen;
   FILE *history ;
   char *cmd_argv[ARGS_LIMIT];
+
+  // working directory
+  char cwd[PATH_MAX];
+  getcwd(cwd, PATH_MAX);
+  prompt(cwd);
 
   // TODO: full path
   history = fopen(".hist", "a+");
@@ -124,10 +135,12 @@ int main(int argc, char *argv[]) {
         if(!strcmp(cmd_argv[0],"exit")) break;
         else if(!strcmp(cmd_argv[0],"cd")){
           cd(cmd_argv[1]);
+          getcwd(cwd, PATH_MAX);
         }else{
           run_command(cmd_argv[0], cmd_argv);
         }
     }
+    prompt(cwd);
   }
   free(buf);
   fclose(history);

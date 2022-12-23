@@ -18,9 +18,9 @@ Just another shell that just works. This project is for educational purposes.
   - [ ] d (equivalant: `grep -v "\s*#" file`)
   - [ ] f (equivalant: `wc -l file`)
   - [ ] g (equivalant: `head -n10 file`)
-  - [ ] cd (https://stackoverflow.com/questions/34998152/how-exactly-does-the-cd-command-work-in-bash)
+  - [x] cd (https://stackoverflow.com/questions/34998152/how-exactly-does-the-cd-command-work-in-bash)
   - [x] exit command (should exit the shell)
-- [ ] prompt (pwd, cd)
+- [x] prompt (pwd, cd)
 - [ ] print errors in stderr
 - [x] commands history (store commands in .hist)
 ---
