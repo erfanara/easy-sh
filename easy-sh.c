@@ -38,7 +38,6 @@ char *get_newline(char *line, size_t *len) {
 void split_to_argv(char *str, char *argv[]) {
   char *token;
   int i = 0;
-  // TODO: check strsep compatbility with windows
   while ((token = strsep(&str, " \t\0"))) {
     if (*token != '\0' && *token != '\t')
       argv[i++] = token;
@@ -57,11 +56,11 @@ int main(int argc, char *argv[]) {
   char *cmd_argv[ARGS_LIMIT];
 
   while (1) {
+    history = fopen(".hist", "a+");
     if (get_newline(buf, &strlen) != NULL && buf[0] != '\0') {
         // store all commands to .hist file TODO: handle max count of commands in history
-        history = fopen(".hist", "a+");
         fprintf(history,"%s\n", buf);
-        fclose(history);
+        fflush(history);
         split_to_argv(buf, cmd_argv);
         if(!strcmp(cmd_argv[0],"exit")) break;
         else{
@@ -77,5 +76,6 @@ int main(int argc, char *argv[]) {
     }
   }
   free(buf);
+  fclose(history);
   exit(0);
 }
