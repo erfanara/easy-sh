@@ -10,7 +10,6 @@ Just another shell that just works. This project is for educational purposes.
 ## tasks
 - [x] Command execution
 - [x] Command not found
-- [ ] Command executed correctly 
 - [ ] Built-in functions
   - [ ] a (equivalant: `awk '{print $1}' test | grep -v "^$"`)
   - [ ] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
@@ -21,9 +20,24 @@ Just another shell that just works. This project is for educational purposes.
   - [x] cd (https://stackoverflow.com/questions/34998152/how-exactly-does-the-cd-command-work-in-bash)
   - [x] exit command (should exit the shell)
 - [x] prompt (pwd, cd)
-- [ ] print errors in stderr
+- [x] print errors in stderr
 - [x] commands history (store commands in .hist)
+
 ---
+
+Extra:
+
 - [ ] ctrl+c (SIGTERM)
 - [ ] up and down keys (navigate over commands history)
-- [ ] pipe
+- [ ] pipe (https://stackoverflow.com/questions/9834086/what-is-a-simple-explanation-for-how-pipes-work-in-bash)
+
+---
+
+Super Extra:
+
+- [ ] Add even more keys like readline (clear, ...)
+- [ ] Clean up and refactor project (Add abstractions like readline+bash)
+- [ ] Add Features sections in README.md
+- [ ] Zero-dependency 
+- [ ] One-file code (is a good idea?)
+
