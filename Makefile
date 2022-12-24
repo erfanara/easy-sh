@@ -6,7 +6,7 @@
 # endif
 
 CC=gcc
-compile=$(CC) -Wall -O0 -g easy-sh.c -o a.out
+compile=$(CC) -Wall -O0 -g -lreadline easy-sh.c -o a.out
 
 # ifeq ($(detected_OS),Windows)
 # main : main.c lib/*.c

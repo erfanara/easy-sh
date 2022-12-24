@@ -8,11 +8,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <linux/limits.h>
+#include <signal.h>
 #include "./colors.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 
-
-// TODO: dynamic buffer ?
-#define BUF_LIMIT 50000
 #define ARGS_LIMIT 5000
 
 void fcprintf(FILE *restrict stream, char* str, char* color, char* after_color){
@@ -61,15 +61,7 @@ void run_command(char *const file, char *const *argv) {
   }
 }
 
-char *get_newline(char *line, size_t *len) {
-  if (fgets(line, BUF_LIMIT, stdin)) {
-    *len = strlen(line);
-    if (*len > 0 && line[*len - 1] == '\n')
-      line[--(*len)] = '\0';
-  }
-  return line;
-}
-
+// TODO: parse smarter (can't parse single qoute and double qoute)
 void split_to_argv(char *str, char *argv[]) {
   char *token;
   int i = 0;
@@ -107,31 +99,41 @@ void cd(char* path){
   }
 }
 
-void prompt(char* cwd){
-  fprintf(stdout, "%s%s> %s",GRN ,cwd, RESET);
-  fflush(stdout);
+void sigint_handler(int i){
+  rl_replace_line("",0);
+  rl_redisplay();
+  rl_done=1;
 }
+int dummy_event(void) { return 0; }
 
 int main(int argc, char *argv[]) {
-  char *buf = malloc(sizeof(char) * BUF_LIMIT);
-  size_t strlen;
-  FILE *history ;
+  rl_event_hook=dummy_event;
+  signal(SIGINT, sigint_handler);
+
   char *cmd_argv[ARGS_LIMIT];
 
-  // working directory
+  // init cwd (current working directory)
   char cwd[PATH_MAX];
   getcwd(cwd, PATH_MAX);
-  prompt(cwd);
 
-  // TODO: full path
-  history = fopen(".hist", "a+");
+  rl_bind_key('\t', rl_complete);
+
+  char hist_path[PATH_MAX+6];
+  sprintf(hist_path, "%s/.hist",cwd);
+
+  read_history(hist_path);
+  using_history();
+
+  char prompt[PATH_MAX+11]; 
+  sprintf(prompt, "%s%s%s$ ",GRN ,cwd, RESET);
 
   while (1) {
-    if (get_newline(buf, &strlen) != NULL && buf[0] != '\0') {
-        // store all commands to .hist file TODO: handle max count of commands in history
-        fprintf(history,"%s\n", buf);
-        fflush(history);
-        split_to_argv(buf, cmd_argv);
+    char* input = readline(prompt);
+    if (input != NULL && input[0] != '\0') {
+        add_history(input);
+        write_history(hist_path);
+
+        split_to_argv(input, cmd_argv);
         if(!strcmp(cmd_argv[0],"exit")) break;
         else if(!strcmp(cmd_argv[0],"cd")){
           cd(cmd_argv[1]);
@@ -140,9 +142,7 @@ int main(int argc, char *argv[]) {
           run_command(cmd_argv[0], cmd_argv);
         }
     }
-    prompt(cwd);
+    free(input);
   }
-  free(buf);
-  fclose(history);
   exit(0);
 }
