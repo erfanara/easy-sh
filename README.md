@@ -27,17 +27,15 @@ Just another shell that just works. This project is for educational purposes.
 
 Extra:
 
-- [ ] ctrl+c (SIGTERM)
-- [ ] up and down keys (navigate over commands history)
+- [x] ctrl+c (SIGINT)
+- [x] up and down keys (navigate over commands history)
 - [ ] pipe (https://stackoverflow.com/questions/9834086/what-is-a-simple-explanation-for-how-pipes-work-in-bash)
 
 ---
 
 Super Extra:
 
-- [ ] Add even more keys like readline (clear, ...)
 - [ ] Clean up and refactor project (Add abstractions like readline+bash)
 - [ ] Add Features sections in README.md
-- [ ] Zero-dependency 
 - [ ] One-file code (is a good idea?)
 
