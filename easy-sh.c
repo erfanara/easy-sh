@@ -17,7 +17,7 @@
 
 void fcprintf(FILE *restrict stream, char *str, char *color,
               char *after_color) {
-  fprintf(stream, "%s%s%s", color, str, after_color);
+  fprintf(stream, "%s%s%s\n", color, str, after_color);
 }
 
 pid_t pid = -1;
@@ -27,7 +27,8 @@ void run_command(char *const file, char *const *argv) {
   int status;
 
   if (pid < 0) { /* error occurred */
-    fprintf(stderr, "Fork Failed");
+    fprintf(stderr, "Fork Failed\n");
+    fcprintf(stderr, strerror(errno), RED, RESET);
   } else if (pid == 0) { /* execute cmd */
     execvp(file, argv);
   } else { /* parent waiting */
@@ -35,33 +36,10 @@ void run_command(char *const file, char *const *argv) {
   }
 
   if (status) {
-    switch (errno) {
-    default:
-      if (!pid)
-        fprintf(stderr, "%serrno %i occurred!\n%s", RED, errno, RESET);
-      break;
-    case ENOENT:
-      if (!pid)
-        fcprintf(stderr, "Command not found!\n", RED, RESET);
-      break;
-    case EACCES:
-      if (!pid)
-        fcprintf(stderr, "Permission denied!\n", RED, RESET);
-      break;
-    case ELOOP:
-      if (!pid)
-        fcprintf(stderr,
-                 "A loop exists in symbolic links (Maximum recursion limit "
-                 "exceeded)!\n",
-                 RED, RESET);
-      break;
-    case ENAMETOOLONG:
-      if (!pid)
-        fcprintf(stderr, "Path too long!\n", RED, RESET);
-      break;
-    }
-    if (!pid)
+    if (!pid){
+      fcprintf(stderr, strerror(errno), RED, RESET);
       exit(-1);
+    }
   }
 }
 
@@ -79,30 +57,8 @@ void split_to_argv(char *str, char *argv[]) {
 // Built-ins
 void cd(char *path) {
   int status = chdir(path);
-  if (status) {
-    switch (errno) {
-    default:
-      break;
-    case EACCES:
-      fcprintf(stderr, "Permission denied!\n", RED, RESET);
-      break;
-    case ELOOP:
-      fcprintf(stderr,
-               "A loop exists in symbolic links (Maximum recursion limit "
-               "exceeded)!\n",
-               RED, RESET);
-      break;
-    case ENAMETOOLONG:
-      fcprintf(stderr, "Path too long!\n", RED, RESET);
-      break;
-    case ENOENT:
-      fcprintf(stderr, "Wrong path!\n", RED, RESET);
-      break;
-    case ENOTDIR:
-      fcprintf(stderr, "Not a directory!\n", RED, RESET);
-      break;
-    }
-  }
+  if (status)
+    fcprintf(stderr, strerror(errno), RED, RESET);
 }
 
 void sigint_handler(int i) {
@@ -131,9 +87,10 @@ int main(int argc, char *argv[]) {
   using_history();
 
   char prompt[PATH_MAX + 11];
-  sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
   while (1) {
+    sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
+
     char *input = readline(prompt);
     if (input != NULL && input[0] != '\0') {
       add_history(input);
