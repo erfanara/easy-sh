@@ -54,6 +54,7 @@ void split_to_argv(char *str, char *argv[]) {
   argv[i] = NULL;
 }
 
+<<<<<<< HEAD
 // Built-ins
 void cd(char *path) {
   int status = chdir(path);
