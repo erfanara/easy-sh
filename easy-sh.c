@@ -30,7 +30,28 @@ void run_command(char *const file, char *const *argv) {
     fprintf(stderr, "Fork Failed\n");
     fcprintf(stderr, strerror(errno), RED, RESET);
   } else if (pid == 0) { /* execute cmd */
-    execvp(file, argv);
+    if(!strcmp(file,"fw")){// first word, a command
+        if(!argv[1]){
+          printf("fw - print first word of file\nUsage: fw [filename]\n");
+          exit(0);
+        } else {
+          FILE* inp = fopen(argv[1],"r");
+          if(!inp ){
+            fcprintf(stderr, strerror(errno), RED, RESET);
+            exit(2);
+          } else {
+            char ch; 
+            fscanf(inp,"%c",&ch);
+            while(ch !=  ' '){
+              printf("%c",ch);
+              fscanf(inp,"%c",&ch);
+            }
+            printf("\n");
+            fclose(inp);
+            exit(0);
+          }
+        }
+      } else {execvp(file, argv);}
   } else { /* parent waiting */
     pid = wait(&status);
   }
@@ -103,25 +124,7 @@ int main(int argc, char *argv[]) {
       else if (!strcmp(cmd_argv[0], "cd")) {
         cd(cmd_argv[1]);
         getcwd(cwd, PATH_MAX);
-      } else if(!strcmp(cmd_argv[0],"fw")){// first word, a command
-        if(!cmd_argv[1]){
-          printf("fw - print first word of file\nUsage: fw [filename]\n");
-        } else {
-          FILE* inp = fopen(cmd_argv[1],"r");
-          if(!inp ){
-            fcprintf(stderr, strerror(errno), RED, RESET);
-          } else {
-            char ch; 
-            fscanf(inp,"%c",&ch);
-            while(ch !=  ' '){
-              printf("%c",ch);
-              fscanf(inp,"%c",&ch);
-            }
-            printf("\n");
-            fclose(inp);
-          }
-        }
-      } else {
+      }  else {
         run_command(cmd_argv[0], cmd_argv);
       }
     }
