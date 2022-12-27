@@ -148,6 +148,16 @@ int main(int argc, char *argv[]) {
           split_to_argv(cmd,cmd_argv);
           run_command(cmd_argv[0],cmd_argv);
         }
+      }else if(!strcmp(cmd_argv[0], "lc")) {
+        if(!cmd_argv[1]){
+          printf("lc - print line counts of file\nUsage: lc [filename]\n");
+        }
+        else{
+          char cmd[500];
+          sprintf(cmd,"wc -l %s",cmd_argv[1]);
+          split_to_argv(cmd,cmd_argv);
+          run_command(cmd_argv[0],cmd_argv);
+        }
       }else {
         run_command(cmd_argv[0], cmd_argv);
       }
