@@ -158,6 +158,16 @@ int main(int argc, char *argv[]) {
           split_to_argv(cmd,cmd_argv);
           run_command(cmd_argv[0],cmd_argv);
         }
+      }else if(!strcmp(cmd_argv[0], "firsten")) {
+        if(!cmd_argv[1]){
+          printf("firsten - print first ten lines of file\nUsage: firsten [filename]\n");
+        }
+        else{
+          char cmd[500];
+          sprintf(cmd,"head -n10 %s",cmd_argv[1]);
+          split_to_argv(cmd,cmd_argv);
+          run_command(cmd_argv[0],cmd_argv);
+        }
       }else {
         run_command(cmd_argv[0], cmd_argv);
       }
