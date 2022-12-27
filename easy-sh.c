@@ -51,7 +51,9 @@ void run_command(char *const file, char *const *argv) {
             exit(0);
           }
         }
-      } else {execvp(file, argv);}
+      } else {
+        execvp(file, argv);
+      }
   } else { /* parent waiting */
     pid = wait(&status);
   }
@@ -124,7 +126,19 @@ int main(int argc, char *argv[]) {
       else if (!strcmp(cmd_argv[0], "cd")) {
         cd(cmd_argv[1]);
         getcwd(cwd, PATH_MAX);
-      }  else {
+      } else if(!strcmp(cmd_argv[0], "singline")) {
+        if(!cmd_argv[1]){
+          printf("Singline - print all file content without any space or whitespaces\nUsage: singline [filename]\n");
+        }
+        else{
+          char cmd[500];
+          sprintf(cmd,"sed -z s/\\s//g %s",cmd_argv[1]);
+          split_to_argv(cmd,cmd_argv);
+          run_command(cmd_argv[0],cmd_argv);
+          printf("\n");
+          
+        }
+      } else {
         run_command(cmd_argv[0], cmd_argv);
       }
     }
