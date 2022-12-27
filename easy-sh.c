@@ -44,6 +44,7 @@ void run_command(char *const file, char *const *argv) {
 }
 
 // TODO: parse smarter (can't parse single qoute and double qoute)
+// We don't need to, its not in project scope ( yaay! )
 void split_to_argv(char *str, char *argv[]) {
   char *token;
   int i = 0;
@@ -102,6 +103,24 @@ int main(int argc, char *argv[]) {
       else if (!strcmp(cmd_argv[0], "cd")) {
         cd(cmd_argv[1]);
         getcwd(cwd, PATH_MAX);
+      } else if(!strcmp(cmd_argv[0],"fw")){// first word, a command
+        if(!cmd_argv[1]){
+          printf("fw - print first word of file\nUsage: fw [filename]\n");
+        } else {
+          FILE* inp = fopen(cmd_argv[1],"r");
+          if(!inp ){
+            fcprintf(stderr, strerror(errno), RED, RESET);
+          } else {
+            char ch; 
+            fscanf(inp,"%c",&ch);
+            while(ch !=  ' '){
+              printf("%c",ch);
+              fscanf(inp,"%c",&ch);
+            }
+            printf("\n");
+            fclose(inp);
+          }
+        }
       } else {
         run_command(cmd_argv[0], cmd_argv);
       }

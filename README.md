@@ -11,7 +11,7 @@ Just another shell that just works. This project is for educational purposes.
 - [x] Command execution
 - [x] Command not found
 - [ ] Built-in functions
-  - [ ] a (equivalant: `awk '{print $1}' test | grep -v "^$"`)
+  - [x] a (equivalant: `awk '{print $1}' test | grep -v "^$"`), name : fw
   - [ ] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
   - [ ] c (equivalant: `sed -z 's/\s//g' file`)
   - [ ] d (equivalant: `grep -v "\s*#" file`)
