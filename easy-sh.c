@@ -138,7 +138,17 @@ int main(int argc, char *argv[]) {
           printf("\n");
           
         }
-      } else {
+      } else if(!strcmp(cmd_argv[0], "nocomment")) {
+        if(!cmd_argv[1]){
+          printf("Nocomment - print all file content but lines starting with #\nUsage: nocomment [filename]\n");
+        }
+        else{
+          char cmd[500];
+          sprintf(cmd,"grep -v \\s*# %s",cmd_argv[1]);
+          split_to_argv(cmd,cmd_argv);
+          run_command(cmd_argv[0],cmd_argv);
+        }
+      }else {
         run_command(cmd_argv[0], cmd_argv);
       }
     }

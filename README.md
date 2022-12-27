@@ -14,7 +14,7 @@ Just another shell that just works. This project is for educational purposes.
   - [x] a (equivalant: `awk '{print $1}' test | grep -v "^$"`), name : fw
   - [ ] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
   - [x] c (equivalant: `sed -z 's/\s//g' file`)
-  - [ ] d (equivalant: `grep -v "\s*#" file`)
+  - [x] d (equivalant: `grep -v "\s*#" file`)
   - [ ] f (equivalant: `wc -l file`)
   - [ ] g (equivalant: `head -n10 file`)
   - [x] cd (https://stackoverflow.com/questions/34998152/how-exactly-does-the-cd-command-work-in-bash)
