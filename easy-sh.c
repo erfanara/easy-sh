@@ -21,31 +21,8 @@ void fcprintf(FILE *restrict stream, char *str, char *color,
   fprintf(stream, "%s%s%s\n", color, str, after_color);
 }
 
-void run_command(char *const file, char *const *argv) {
-  pid_t pid = fork();
-  int status;
-
-  if (pid < 0) {
-    /* error occurred */
-    fprintf(stderr, "Fork Failed\n");
-    fcprintf(stderr, strerror(errno), RED, RESET);
-  } else if (pid == 0) {
-    /* execute cmd */
-    execvp(file, argv);
-  } else {
-    /* parent waiting */
-    pid = wait(&status);
-  }
-
-  if (status) {
-    if (!pid) {
-      fcprintf(stderr, strerror(errno), RED, RESET);
-      exit(-1);
-    }
-  }
-}
-
-void run_function(void (*f)(char *file), char *file) {
+void run_function(int (*f)(const char *file, char *const *argv),
+                  char *const *argv) {
   pid_t pid = fork();
   int status;
 
@@ -55,7 +32,7 @@ void run_function(void (*f)(char *file), char *file) {
     fcprintf(stderr, strerror(errno), RED, RESET);
   } else if (pid == 0) {
     /* execute function */
-    (*f)(file);
+    (*f)(argv[0], argv);
   } else {
     /* parent waiting */
     pid = wait(&status);
@@ -68,6 +45,7 @@ void run_function(void (*f)(char *file), char *file) {
     }
   }
 }
+void run_command(char *const *argv) { run_function(execvp, argv); }
 
 // TODO: parse smarter (can't parse single qoute and double qoute)
 // We don't need to, its not in project scope ( yaay! )
@@ -98,12 +76,12 @@ void cd(char *path) {
     fcprintf(stderr, strerror(errno), RED, RESET);
 }
 
-void fw(char *file) {
-  if (!file) {
+int fw(const char *file, char *const *argv) {
+  if (!argv[1]) {
     printf("fw - print first word of file\nUsage: fw [filename]\n");
     exit(0);
   } else {
-    FILE *inp = fopen(file, "r");
+    FILE *inp = fopen(argv[1], "r");
     if (!inp) {
       fcprintf(stderr, strerror(errno), RED, RESET);
       exit(2);
@@ -127,7 +105,7 @@ void singline(char *file) {
            "whitespaces\nUsage: singline [filename]\n");
   } else {
     char *cmd_argv[] = {"sed", "-z", "s/\\s//g", file, NULL};
-    run_command(cmd_argv[0], cmd_argv);
+    run_command(cmd_argv);
     printf("\n");
   }
 }
@@ -138,7 +116,7 @@ void nocomment(char *file) {
            "#\nUsage: nocomment [filename]\n");
   } else {
     char *cmd_argv[] = {"grep", "-v", "\\s*#", file, NULL};
-    run_command(cmd_argv[0], cmd_argv);
+    run_command(cmd_argv);
   }
 }
 
@@ -147,7 +125,7 @@ void lc(char *file) {
     printf("lc - print line counts of file\nUsage: lc [filename]\n");
   } else {
     char *cmd_argv[] = {"wc", "-l", file, NULL};
-    run_command(cmd_argv[0], cmd_argv);
+    run_command(cmd_argv);
   }
 }
 
@@ -157,7 +135,7 @@ void firsten(char *file) {
            "[filename]\n");
   } else {
     char *cmd_argv[] = {"head", "-n10", file, NULL};
-    run_command(cmd_argv[0], cmd_argv);
+    run_command(cmd_argv);
   }
 }
 
@@ -256,7 +234,7 @@ int main(int argc, char *argv[]) {
           cd(cmd_argv[1]);
           getcwd(cwd, PATH_MAX);
         } else if (!strcmp(cmd_argv[0], "fw")) {
-          run_function(fw, cmd_argv[1]);
+          run_function(fw, cmd_argv);
         } else if (!strcmp(cmd_argv[0], "singline")) {
           singline(cmd_argv[1]);
         } else if (!strcmp(cmd_argv[0], "nocomment")) {
@@ -266,7 +244,7 @@ int main(int argc, char *argv[]) {
         } else if (!strcmp(cmd_argv[0], "firsten")) {
           firsten(cmd_argv[1]);
         } else {
-          run_command(cmd_argv[0], cmd_argv);
+          run_command(cmd_argv);
         }
       }
     }
