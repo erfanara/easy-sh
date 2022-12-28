@@ -166,9 +166,9 @@ int main(int argc, char *argv[]) {
   using_history();
 
   char prompt[PATH_MAX + 11];
+  sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
   while (1) {
-    sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
     char *input = readline(prompt);
     if (input != NULL && input[0] != '\0') {
@@ -233,6 +233,7 @@ int main(int argc, char *argv[]) {
         else if (!strcmp(cmd_argv[0], "cd")) {
           cd(cmd_argv[1]);
           getcwd(cwd, PATH_MAX);
+          sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
         } else if (!strcmp(cmd_argv[0], "fw")) {
           run_function(fw, cmd_argv);
         } else if (!strcmp(cmd_argv[0], "singline")) {
