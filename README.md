@@ -10,9 +10,9 @@ Just another shell that just works. This project is for educational purposes.
 ## tasks
 - [x] Command execution
 - [x] Command not found
-- [ ] Built-in functions
+- [x] Built-in functions
   - [x] a (equivalant: `awk '{print $1}' test | grep -v "^$"`), name : fw
-  - [ ] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
+  - [x] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
   - [x] c (equivalant: `sed -z 's/\s//g' file`) name : singline
   - [x] d (equivalant: `grep -v "\s*#" file`) name: nocomment
   - [x] f (equivalant: `wc -l file`) name: lc
@@ -29,12 +29,13 @@ Extra:
 
 - [x] ctrl+c (SIGINT)
 - [x] up and down keys (navigate over commands history)
-- [ ] pipe (https://stackoverflow.com/questions/9834086/what-is-a-simple-explanation-for-how-pipes-work-in-bash)
+- [x] pipe (https://stackoverflow.com/questions/9834086/what-is-a-simple-explanation-for-how-pipes-work-in-bash)
 
 ---
 
 Super Extra:
 
+- [ ] Fix todos
 - [ ] Clean up and refactor project (Add abstractions like readline+bash)
 - [ ] Add Features sections in README.md
 - [ ] One-file code (is a good idea?)
