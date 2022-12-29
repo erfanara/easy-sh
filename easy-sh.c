@@ -15,6 +15,7 @@
 #include "./colors.h"
 
 #define ARGS_LIMIT 5000
+#define PIPE_LIMIT 100
 
 void fcprintf(FILE *restrict stream, char *str, char *color,
               char *after_color) {
@@ -22,7 +23,7 @@ void fcprintf(FILE *restrict stream, char *str, char *color,
 }
 
 void run_function(int (*f)(const char *file, char *const *argv),
-                  char *const *argv) {
+                  char *const *argv, int *in_pipe, int *out_pipe) {
   pid_t pid = fork();
   int status;
 
@@ -32,10 +33,22 @@ void run_function(int (*f)(const char *file, char *const *argv),
     fcprintf(stderr, strerror(errno), RED, RESET);
   } else if (pid == 0) {
     /* execute function */
+    if (in_pipe) {
+      close(in_pipe[1]);
+      dup2(in_pipe[0], STDIN_FILENO);
+      close(in_pipe[0]);
+    }
+    if (out_pipe) {
+      close(out_pipe[0]);
+      dup2(out_pipe[1], STDOUT_FILENO);
+      close(out_pipe[1]);
+    }
     (*f)(argv[0], argv);
   } else {
     /* parent waiting */
     pid = wait(&status);
+    if (out_pipe)
+      close(out_pipe[1]);
   }
 
   if (status) {
@@ -45,7 +58,9 @@ void run_function(int (*f)(const char *file, char *const *argv),
     }
   }
 }
-void run_command(char *const *argv) { run_function(execvp, argv); }
+void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
+  run_function(execvp, argv, in_pipe, out_pipe);
+}
 
 // TODO: parse smarter (can't parse single qoute and double qoute)
 // We don't need to, its not in project scope ( yaay! )
@@ -105,7 +120,7 @@ void singline(char *file) {
            "whitespaces\nUsage: singline [filename]\n");
   } else {
     char *cmd_argv[] = {"sed", "-z", "s/\\s//g", file, NULL};
-    run_command(cmd_argv);
+    run_command(cmd_argv, NULL, NULL);
     printf("\n");
   }
 }
@@ -116,7 +131,7 @@ void nocomment(char *file) {
            "#\nUsage: nocomment [filename]\n");
   } else {
     char *cmd_argv[] = {"grep", "-v", "\\s*#", file, NULL};
-    run_command(cmd_argv);
+    run_command(cmd_argv, NULL, NULL);
   }
 }
 
@@ -125,7 +140,7 @@ void lc(char *file) {
     printf("lc - print line counts of file\nUsage: lc [filename]\n");
   } else {
     char *cmd_argv[] = {"wc", "-l", file, NULL};
-    run_command(cmd_argv);
+    run_command(cmd_argv, NULL, NULL);
   }
 }
 
@@ -135,7 +150,7 @@ void firsten(char *file) {
            "[filename]\n");
   } else {
     char *cmd_argv[] = {"head", "-n10", file, NULL};
-    run_command(cmd_argv);
+    run_command(cmd_argv, NULL, NULL);
   }
 }
 
@@ -152,6 +167,7 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
 
   char *cmd_argv[ARGS_LIMIT];
+  char *pipe_cmds[PIPE_LIMIT];
 
   // init cwd (current working directory)
   char cwd[PATH_MAX];
@@ -169,84 +185,56 @@ int main(int argc, char *argv[]) {
   sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
   while (1) {
-
     char *input = readline(prompt);
-    if (input != NULL && input[0] != '\0') {
-      add_history(input);
-      write_history(hist_path);
-      if (strstr(input, "|") != NULL) {
-        size_t i, n;
-        int prev_pipe, pfds[2];
-        split_pipe_to_commands(input, cmd_argv);
-        char *args[ARGS_LIMIT];
-        for (n = 0; cmd_argv[n]; n++)
-          ;
-        prev_pipe = STDIN_FILENO;
+    if (input == NULL)
+      break;
+    else if (input[0] == '\0')
+      continue;
 
-        for (i = 0; i < n - 1; i++) {
-          pipe(pfds);
+    add_history(input);
+    write_history(hist_path);
 
-          if (fork() == 0) {
-            // Redirect previous pipe to stdin
-            if (prev_pipe != STDIN_FILENO) {
-              dup2(prev_pipe, STDIN_FILENO);
-              close(prev_pipe);
-            }
 
-            // Redirect stdout to current pipe
-            dup2(pfds[1], STDOUT_FILENO);
-            close(pfds[1]);
-
-            // Start command
-            split_to_argv(cmd_argv[i], args);
-            execvp(args[0], args);
-            perror("execvp Failed");
-            exit(1);
-          }
-
-          // Close read end of previous pipe (not needed in the
-          // parent)
-          close(prev_pipe);
-
-          // Close write end of current pipe (not needed in the
-          // parent)
-          close(pfds[1]);
-
-          // Save read end of current pipe to use in next iteration
-          prev_pipe = pfds[0];
-        }
-
-        // Get stdin from last pipe
-        if (prev_pipe != STDIN_FILENO) {
-          dup2(prev_pipe, STDIN_FILENO);
-          close(prev_pipe);
-        }
-
-        split_to_argv(cmd_argv[i], args);
-        // Start last command
-        execvp(args[0], args);
-        perror("Execvp Failed:");
+    split_pipe_to_commands(input, pipe_cmds);
+    split_to_argv(pipe_cmds[0], cmd_argv);
+    if (!strcmp(cmd_argv[0], "exit"))
+      break;
+    else if (!strcmp(cmd_argv[0], "cd")) {
+      cd(cmd_argv[1]);
+      getcwd(cwd, PATH_MAX);
+      sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
+    } else if (!strcmp(cmd_argv[0], "fw")) {
+      run_function(fw, cmd_argv, NULL, NULL);
+    } else if (!strcmp(cmd_argv[0], "singline")) {
+      singline(cmd_argv[1]);
+    } else if (!strcmp(cmd_argv[0], "nocomment")) {
+      nocomment(cmd_argv[1]);
+    } else if (!strcmp(cmd_argv[0], "lc")) {
+      lc(cmd_argv[1]);
+    } else if (!strcmp(cmd_argv[0], "firsten")) {
+      firsten(cmd_argv[1]);
+    } else {
+      if (pipe_cmds[1] == NULL) {
+        run_command(cmd_argv, NULL, NULL);
       } else {
-        split_to_argv(input, cmd_argv);
-        if (!strcmp(cmd_argv[0], "exit"))
-          break;
-        else if (!strcmp(cmd_argv[0], "cd")) {
-          cd(cmd_argv[1]);
-          getcwd(cwd, PATH_MAX);
-          sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
-        } else if (!strcmp(cmd_argv[0], "fw")) {
-          run_function(fw, cmd_argv);
-        } else if (!strcmp(cmd_argv[0], "singline")) {
-          singline(cmd_argv[1]);
-        } else if (!strcmp(cmd_argv[0], "nocomment")) {
-          nocomment(cmd_argv[1]);
-        } else if (!strcmp(cmd_argv[0], "lc")) {
-          lc(cmd_argv[1]);
-        } else if (!strcmp(cmd_argv[0], "firsten")) {
-          firsten(cmd_argv[1]);
-        } else {
-          run_command(cmd_argv);
+        int pipe_fd0[2], pipe_fd1[2], i = 0;
+        if (pipe(pipe_fd0))
+          fcprintf(stderr, strerror(errno), RED, RESET);
+
+        run_command(cmd_argv, NULL, pipe_fd0);
+
+        for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
+          if (pipe(pipe_fd1))
+            fcprintf(stderr, strerror(errno), RED, RESET);
+
+          split_to_argv(pipe_cmds[i], cmd_argv);
+          run_command(cmd_argv, pipe_fd0, pipe_fd1);
+
+          pipe_fd0[0] = pipe_fd1[0];
+          pipe_fd0[1] = pipe_fd1[1];
         }
+        split_to_argv(pipe_cmds[i], cmd_argv);
+        run_command(cmd_argv, pipe_fd0, NULL);
       }
     }
     free(input);
