@@ -40,4 +40,5 @@ Super Extra:
 - [ ] Add Features sections in README.md
 - [ ] One-file code (is a good idea?)
 - [ ] Add tab completion for Built-in commands
+- [ ] Add comment and doc
 
