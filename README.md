@@ -12,11 +12,11 @@ Just another shell that just works. This project is for educational purposes.
 - [x] Command not found
 - [x] Built-in functions
   - [x] a (equivalant: `awk '{print $1}' test | grep -v "^$"`), name : fw
-  - [x] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`)
-  - [x] c (equivalant: `sed -z 's/\s//g' file`) name : singline
-  - [x] d (equivalant: `grep -v "\s*#" file`) name: nocomment
-  - [x] f (equivalant: `wc -l file`) name: lc
-  - [x] g (equivalant: `head -n10 file`) name : firsten
+  - [x] b (equivalant: `cut -f1 file | sort | uniq -c | sort -rn | head -n1`), name: mostword
+  - [x] c (equivalant: `sed -z 's/\s//g' file`), name : singline
+  - [x] d (equivalant: `grep -v "\s*#" file`), name: nocomment
+  - [x] f (equivalant: `wc -l file`), name: lc
+  - [x] g (equivalant: `head -n10 file`), name : firsten
   - [x] cd (https://stackoverflow.com/questions/34998152/how-exactly-does-the-cd-command-work-in-bash)
   - [x] exit command (should exit the shell)
 - [x] prompt (pwd, cd)
@@ -35,8 +35,9 @@ Extra:
 
 Super Extra:
 
-- [ ] Fix todos
-- [ ] Clean up and refactor project (Add abstractions like readline+bash)
+- [ ] Fix todos and test for bugs
+- [ ] Clean up and refactor project 
 - [ ] Add Features sections in README.md
 - [ ] One-file code (is a good idea?)
+- [ ] Add tab completion for Built-in commands
 
