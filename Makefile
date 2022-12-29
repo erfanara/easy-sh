@@ -24,3 +24,6 @@ run :
 	$(compile)
 	./a.out
 
+debug:
+	$(compile)
+	gdb ./a.out

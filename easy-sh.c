@@ -22,6 +22,28 @@ void fcprintf(FILE *restrict stream, char *str, char *color,
   fprintf(stream, "%s%s%s\n", color, str, after_color);
 }
 
+// TODO: parse smarter (can't parse single qoute and double qoute)
+// We don't need to, its not in project scope ( yaay! )
+void split_to_argv(char *str, char *argv[]) {
+  char *token;
+  int i = 0;
+  while ((token = strsep(&str, " \t\0"))) {
+    if (*token != '\0' && *token != '\t')
+      argv[i++] = token;
+  }
+  argv[i] = NULL;
+}
+
+void split_pipe_to_commands(char *str, char *argv[]) {
+  char *token;
+  int i = 0;
+  while ((token = strsep(&str, "|"))) {
+    if (*token != '\0' && *token != '\t')
+      argv[i++] = token;
+  }
+  argv[i] = NULL;
+}
+
 void run_function(int (*f)(const char *file, char *const *argv),
                   char *const *argv, int *in_pipe, int *out_pipe) {
   pid_t pid = fork();
@@ -62,26 +84,28 @@ void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
   run_function(execvp, argv, in_pipe, out_pipe);
 }
 
-// TODO: parse smarter (can't parse single qoute and double qoute)
-// We don't need to, its not in project scope ( yaay! )
-void split_to_argv(char *str, char *argv[]) {
-  char *token;
-  int i = 0;
-  while ((token = strsep(&str, " \t\0"))) {
-    if (*token != '\0' && *token != '\t')
-      argv[i++] = token;
-  }
-  argv[i] = NULL;
-}
+// TODO: Fix function signature
+void run_command_with_pipe(char *const *first_cmd_argv,
+                           char *const *pipe_cmds) {
+  char *cmd_argv[ARGS_LIMIT];
+  int pipe_fd0[2], pipe_fd1[2], i = 0;
+  if (pipe(pipe_fd0))
+    fcprintf(stderr, strerror(errno), RED, RESET);
 
-void split_pipe_to_commands(char *str, char *argv[]) {
-  char *token;
-  int i = 0;
-  while ((token = strsep(&str, "|"))) {
-    if (*token != '\0' && *token != '\t')
-      argv[i++] = token;
+  run_command(first_cmd_argv, NULL, pipe_fd0);
+
+  for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
+    if (pipe(pipe_fd1))
+      fcprintf(stderr, strerror(errno), RED, RESET);
+
+    split_to_argv(pipe_cmds[i], cmd_argv);
+    run_command(cmd_argv, pipe_fd0, pipe_fd1);
+
+    pipe_fd0[0] = pipe_fd1[0];
+    pipe_fd0[1] = pipe_fd1[1];
   }
-  argv[i] = NULL;
+  split_to_argv(pipe_cmds[i], cmd_argv);
+  run_command(cmd_argv, pipe_fd0, NULL);
 }
 
 // Built-ins
@@ -111,6 +135,20 @@ int fw(const char *file, char *const *argv) {
       fclose(inp);
       exit(0);
     }
+  }
+}
+
+void mostword(char *file) {
+  if (!file) {
+    printf("mostword - print most ferequent word in a file "
+           "\nUsage: mostword [filename]\n");
+  } else {
+    char cmd[500] = "cat %s | sed -r s/[[:space:]]+/\\n/g | sed /^$/d | sort | "
+                    "uniq -c | sort -n | tail -n1";
+    char *pipe_cmds[PIPE_LIMIT];
+    char *first_cmd_argv[] = {"cat", file, NULL};
+    split_pipe_to_commands(cmd, pipe_cmds);
+    run_command_with_pipe(first_cmd_argv, pipe_cmds);
   }
 }
 
@@ -194,7 +232,6 @@ int main(int argc, char *argv[]) {
     add_history(input);
     write_history(hist_path);
 
-
     split_pipe_to_commands(input, pipe_cmds);
     split_to_argv(pipe_cmds[0], cmd_argv);
     if (!strcmp(cmd_argv[0], "exit"))
@@ -213,28 +250,13 @@ int main(int argc, char *argv[]) {
       lc(cmd_argv[1]);
     } else if (!strcmp(cmd_argv[0], "firsten")) {
       firsten(cmd_argv[1]);
+    } else if (!strcmp(cmd_argv[0], "mostword")) {
+      mostword(cmd_argv[1]);
     } else {
       if (pipe_cmds[1] == NULL) {
         run_command(cmd_argv, NULL, NULL);
       } else {
-        int pipe_fd0[2], pipe_fd1[2], i = 0;
-        if (pipe(pipe_fd0))
-          fcprintf(stderr, strerror(errno), RED, RESET);
-
-        run_command(cmd_argv, NULL, pipe_fd0);
-
-        for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
-          if (pipe(pipe_fd1))
-            fcprintf(stderr, strerror(errno), RED, RESET);
-
-          split_to_argv(pipe_cmds[i], cmd_argv);
-          run_command(cmd_argv, pipe_fd0, pipe_fd1);
-
-          pipe_fd0[0] = pipe_fd1[0];
-          pipe_fd0[1] = pipe_fd1[1];
-        }
-        split_to_argv(pipe_cmds[i], cmd_argv);
-        run_command(cmd_argv, pipe_fd0, NULL);
+        run_command_with_pipe(cmd_argv, pipe_cmds);
       }
     }
     free(input);
