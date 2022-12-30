@@ -128,7 +128,8 @@ void cd(char *path) {
 
 int fw(const char *file, char *const *argv) {
   if (!argv[1]) {
-    printf("fw - print first word of file\nUsage: fw [filename]\n");
+    fcprintf(stderr, "fw - print first word of file\nUsage: fw [filename]\n",
+             YEL, RESET);
     exit(0);
   } else {
     FILE *inp = fopen(argv[1], "r");
@@ -151,8 +152,10 @@ int fw(const char *file, char *const *argv) {
 
 void singline(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
-    printf("Singline - print all file content without any space or "
-           "whitespaces\nUsage: singline [filename]\n");
+    fcprintf(stderr,
+             "Singline - print all file content without any space or "
+             "whitespaces\nUsage: singline [filename]\n",
+             YEL, RESET);
   } else {
     char *cmd_argv[] = {"sed", "-z", "s/\\s//g", file, NULL};
     run_with_exec(cmd_argv, in_pipe, out_pipe);
@@ -162,8 +165,10 @@ void singline(char *file, int *in_pipe, int *out_pipe) {
 
 void nocomment(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
-    printf("Nocomment - print all file content but lines starting with "
-           "#\nUsage: nocomment [filename]\n");
+    fcprintf(stderr,
+             "Nocomment - print all file content but lines starting with "
+             "#\nUsage: nocomment [filename]\n",
+             YEL, RESET);
   } else {
     char *cmd_argv[] = {"grep", "-v", "\\s*#", file, NULL};
     run_with_exec(cmd_argv, in_pipe, out_pipe);
@@ -172,7 +177,8 @@ void nocomment(char *file, int *in_pipe, int *out_pipe) {
 
 void lc(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
-    printf("lc - print line counts of file\nUsage: lc [filename]\n");
+    fcprintf(stderr, "lc - print line counts of file\nUsage: lc [filename]\n",
+             YEL, RESET);
   } else {
     char *cmd_argv[] = {"wc", "-l", file, NULL};
     run_with_exec(cmd_argv, in_pipe, out_pipe);
@@ -181,8 +187,10 @@ void lc(char *file, int *in_pipe, int *out_pipe) {
 
 void firsten(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
-    printf("firsten - print first ten lines of file\nUsage: firsten "
-           "[filename]\n");
+    fcprintf(stderr,
+             "firsten - print first ten lines of file\nUsage: firsten "
+             "[filename]\n",
+             YEL, RESET);
   } else {
     char *cmd_argv[] = {"head", "-n10", file, NULL};
     run_with_exec(cmd_argv, in_pipe, out_pipe);
@@ -191,8 +199,10 @@ void firsten(char *file, int *in_pipe, int *out_pipe) {
 
 void mostword(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
-    printf("mostword - print most ferequent word in a file "
-           "\nUsage: mostword [filename]\n");
+    fcprintf(stderr,
+             "mostword - print most ferequent word in a file "
+             "\nUsage: mostword [filename]\n",
+             YEL, RESET);
   } else {
     char cmd[500] = "cat %s | sed -r s/[[:space:]]+/\\n/g | sed /^$/d | sort | "
                     "uniq -c | sort -n | tail -n1";
