@@ -42,4 +42,6 @@ Super Extra:
 - [ ] Add tab completion for Built-in commands
 - [ ] Add comment and doc
 - [x] Add pipeline support for Built-in commands
+- [ ] Refactor built-in commands into builtins.c and make it easier to add new commands
+- [ ] alias 
 

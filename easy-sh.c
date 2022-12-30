@@ -22,6 +22,10 @@ char cwd[PATH_MAX];
 char prompt[PATH_MAX + 11];
 int terminate = 0;
 
+// char *character_names[] = {"fw",       "singline", "nocomment",
+//                            "firsten", "lc",       "mostword",
+//                            "cd",       "exit",     NULL};
+
 void fcprintf(FILE *restrict stream, char *str, char *color,
               char *after_color) {
   fprintf(stream, "%s%s%s\n", color, str, after_color);
@@ -90,31 +94,32 @@ void run_with_exec(char *const *argv, int *in_pipe, int *out_pipe) {
   run_function(execvp, argv, in_pipe, out_pipe);
 }
 
-// TODO: Fix function signature
-void run_function_with_pipeline(void (*f)(char *const *argv, int *in_pipe,
+void run_with_exec_with_spliting(char *input, int *in_pipe, int *out_pipe) {
+  char *argv[ARGS_LIMIT];
+  split_to_argv(input, argv);
+  run_function(execvp, argv, in_pipe, out_pipe);
+}
+
+void run_function_with_pipeline(void (*f)(char *input, int *in_pipe,
                                           int *out_pipe),
-                                char *const *first_cmd_argv,
                                 char *const *pipe_cmds, int *in_pipe,
                                 int *out_pipe) {
-  char *cmd_argv[ARGS_LIMIT];
   int pipe_fd0[2], pipe_fd1[2], i = 0;
   if (pipe(pipe_fd0))
     fcprintf(stderr, strerror(errno), RED, RESET);
 
-  f(first_cmd_argv, in_pipe, pipe_fd0);
+  f(pipe_cmds[i], in_pipe, pipe_fd0);
 
   for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
     if (pipe(pipe_fd1))
       fcprintf(stderr, strerror(errno), RED, RESET);
 
-    split_to_argv(pipe_cmds[i], cmd_argv);
-    f(cmd_argv, pipe_fd0, pipe_fd1);
+    f(pipe_cmds[i], pipe_fd0, pipe_fd1);
 
     pipe_fd0[0] = pipe_fd1[0];
     pipe_fd0[1] = pipe_fd1[1];
   }
-  split_to_argv(pipe_cmds[i], cmd_argv);
-  f(cmd_argv, pipe_fd0, out_pipe);
+  f(pipe_cmds[i], pipe_fd0, out_pipe);
 }
 
 // Built-ins
@@ -204,17 +209,22 @@ void mostword(char *file, int *in_pipe, int *out_pipe) {
              "\nUsage: mostword [filename]\n",
              YEL, RESET);
   } else {
-    char cmd[500] = "cat %s | sed -r s/[[:space:]]+/\\n/g | sed /^$/d | sort | "
-                    "uniq -c | sort -n | tail -n1";
+    char cmd0[PATH_MAX + 84] = "cat ";
+    strcat(cmd0, file);
+    char *cmd1 = " | sed -r s/[[:space:]]+/\\n/g | sed /^$/d | sort | "
+                 "uniq -c | sort -n | tail -n1";
+    strcat(cmd0, cmd1);
     char *pipe_cmds[PIPE_LIMIT];
-    char *first_cmd_argv[] = {"cat", file, NULL};
-    split_pipe_to_commands(cmd, pipe_cmds);
-    run_function_with_pipeline(run_with_exec, first_cmd_argv, pipe_cmds,
-                               in_pipe, out_pipe);
+    split_pipe_to_commands(cmd0, pipe_cmds);
+    run_function_with_pipeline(run_with_exec_with_spliting, pipe_cmds, in_pipe,
+                               out_pipe);
   }
 }
 
-void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
+void run_command(char *command, int *in_pipe, int *out_pipe) {
+  char *argv[ARGS_LIMIT];
+  split_to_argv(command, argv);
+
   if (!strcmp(argv[0], "exit"))
     terminate = 1;
   else if (!strcmp(argv[0], "cd")) {
@@ -236,10 +246,8 @@ void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
   }
 }
 
-void run_command_with_pipeline(char *const *first_cmd_argv,
-                               char *const *pipe_cmds) {
-  run_function_with_pipeline(run_command, first_cmd_argv, pipe_cmds, NULL,
-                             NULL);
+void run_command_with_pipeline(char *const *pipe_cmds) {
+  run_function_with_pipeline(run_command, pipe_cmds, NULL, NULL);
 }
 
 //
@@ -250,25 +258,29 @@ void sigint_handler(int i) {
 }
 int dummy_event(void) { return 0; }
 
-int main(int argc, char *argv[]) {
+void init() {
   rl_event_hook = dummy_event;
   signal(SIGINT, sigint_handler);
-
-  char *cmd_argv[ARGS_LIMIT];
-  char *pipe_cmds[PIPE_LIMIT];
 
   // init cwd (current working directory) and prompt
   getcwd(cwd, PATH_MAX);
   sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
+  // tab completion
   rl_bind_key('\t', rl_complete);
+}
 
+int main(int argc, char *argv[]) {
+  init();
+
+  // readline history support
   char hist_path[PATH_MAX + 6];
   sprintf(hist_path, "%s/.hist", cwd);
-
   read_history(hist_path);
   using_history();
 
+  // char *cmd_argv[ARGS_LIMIT];
+  char *pipe_cmds[PIPE_LIMIT];
   while (!terminate) {
     char *input = readline(prompt);
     if (input == NULL)
@@ -280,11 +292,13 @@ int main(int argc, char *argv[]) {
     write_history(hist_path);
 
     split_pipe_to_commands(input, pipe_cmds);
-    split_to_argv(pipe_cmds[0], cmd_argv);
+    // split_to_argv(pipe_cmds[0], cmd_argv);
     if (pipe_cmds[1] == NULL) {
-      run_command(cmd_argv, NULL, NULL);
+      // run_command(cmd_argv, NULL, NULL);
+      run_command(pipe_cmds[0], NULL, NULL);
     } else {
-      run_command_with_pipeline(cmd_argv, pipe_cmds);
+      // run_command_with_pipeline(cmd_argv, pipe_cmds);
+      run_command_with_pipeline(pipe_cmds);
     }
     free(input);
   }
