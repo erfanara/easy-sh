@@ -20,12 +20,8 @@
 // init in main
 char cwd[PATH_MAX];
 char prompt[PATH_MAX + 11];
-int terminate = 0;
 
-// char *character_names[] = {"fw",       "singline", "nocomment",
-//                            "firsten", "lc",       "mostword",
-//                            "cd",       "exit",     NULL};
-
+/* Print to stream with color support */
 void fcprintf(FILE *restrict stream, char *str, char *color,
               char *after_color) {
   fprintf(stream, "%s%s%s\n", color, str, after_color);
@@ -33,6 +29,9 @@ void fcprintf(FILE *restrict stream, char *str, char *color,
 
 // TODO: parse smarter (can't parse single qoute and double qoute)
 // We don't need to, its not in project scope ( yaay! )
+/* Parser function: split 'str' to 'argv'.
+ * delimiter:whitespace characters
+ */
 void split_to_argv(char *str, char *argv[]) {
   char *token;
   int i = 0;
@@ -43,6 +42,9 @@ void split_to_argv(char *str, char *argv[]) {
   argv[i] = NULL;
 }
 
+/* Parser function: split 'str' to 'argv'.
+ * delimiter: '|'
+ */
 void split_pipe_to_commands(char *str, char *argv[]) {
   char *token;
   int i = 0;
@@ -53,7 +55,20 @@ void split_pipe_to_commands(char *str, char *argv[]) {
   argv[i] = NULL;
 }
 
-void run_function(int (*f)(const char *file, char *const *argv),
+/* Core function of easy-sh.
+ *
+ * Able of running any function with name 'executor' after calling fork().
+ *          int executor(const char *, char *const *argv)
+ * you can pass the 'execvp' function to run your program using it.
+ *
+ * Able of using pipes to redirect STDIN and STDOUT (*in_pipe and *out_pipe).
+ * set *in_pipe and *out_pipe to NULL if you don't want to redirect STDIN and
+ * STDOUT of your function.
+ *
+ * This function does not use any parser function, thus you need to split your
+ * command string to argv before passing it.
+ */
+void run_function(int (*executor)(const char *file, char *const *argv),
                   char *const *argv, int *in_pipe, int *out_pipe) {
   pid_t pid = fork();
   int status;
@@ -74,7 +89,7 @@ void run_function(int (*f)(const char *file, char *const *argv),
       dup2(out_pipe[1], STDOUT_FILENO);
       close(out_pipe[1]);
     }
-    (*f)(argv[0], argv);
+    (*executor)(argv[0], argv);
   } else {
     /* parent waiting */
     pid = wait(&status);
@@ -90,39 +105,56 @@ void run_function(int (*f)(const char *file, char *const *argv),
   }
 }
 
+/* This is just a 'run_function(...)' with execvp as of its executor ,
+ * look at 'run_function(...)' for more details
+ */
 void run_with_exec(char *const *argv, int *in_pipe, int *out_pipe) {
   run_function(execvp, argv, in_pipe, out_pipe);
 }
 
+/* This is just a run_function(...) with execvp as of its executor.
+ * This function splits your command itself before using it,
+ * so you don't need to think about parsing stuff.
+ */
 void run_with_exec_with_spliting(char *input, int *in_pipe, int *out_pipe) {
   char *argv[ARGS_LIMIT];
   split_to_argv(input, argv);
   run_function(execvp, argv, in_pipe, out_pipe);
 }
 
-void run_function_with_pipeline(void (*f)(char *input, int *in_pipe,
-                                          int *out_pipe),
-                                char *const *pipe_cmds, int *in_pipe,
-                                int *out_pipe) {
+/* Runs your commands using pipeline.
+ *
+ * You need to pass your commands as a list ('char *const *pipe_cmd')
+ * Also you need to specify your executor function (your executor should support
+ * splitting itself)
+ *
+ * You can redirect STDIN and STDOUT of your command using pipes with *in_pipe
+ * and *out_pipe ,
+ * set them to NULL if you don't want to redirect STDIN and STDOUT.
+ */
+void run_function_with_pipeline(
+    void (*executor_with_spliting)(char *input, int *in_pipe, int *out_pipe),
+    char *const *pipe_cmds, int *in_pipe, int *out_pipe) {
   int pipe_fd0[2], pipe_fd1[2], i = 0;
   if (pipe(pipe_fd0))
     fcprintf(stderr, strerror(errno), RED, RESET);
 
-  f(pipe_cmds[i], in_pipe, pipe_fd0);
+  executor_with_spliting(pipe_cmds[i], in_pipe, pipe_fd0);
 
   for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
     if (pipe(pipe_fd1))
       fcprintf(stderr, strerror(errno), RED, RESET);
 
-    f(pipe_cmds[i], pipe_fd0, pipe_fd1);
+    executor_with_spliting(pipe_cmds[i], pipe_fd0, pipe_fd1);
 
     pipe_fd0[0] = pipe_fd1[0];
     pipe_fd0[1] = pipe_fd1[1];
   }
-  f(pipe_cmds[i], pipe_fd0, out_pipe);
+  executor_with_spliting(pipe_cmds[i], pipe_fd0, out_pipe);
 }
 
 // Built-ins
+/* Built-in command: Change directory */
 void cd(char *path) {
   int status = chdir(path);
   getcwd(cwd, PATH_MAX);
@@ -131,6 +163,7 @@ void cd(char *path) {
     fcprintf(stderr, strerror(errno), RED, RESET);
 }
 
+/* Built-in command: print first word of file */
 int fw(const char *file, char *const *argv) {
   if (!argv[1]) {
     fcprintf(stderr, "fw - print first word of file\nUsage: fw [filename]\n",
@@ -155,6 +188,7 @@ int fw(const char *file, char *const *argv) {
   }
 }
 
+/* Built-in command: print all file content without any space or whitespaces */
 void singline(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -168,6 +202,7 @@ void singline(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
+/* Built-in command: print all file content but lines starting with '#' */
 void nocomment(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -180,6 +215,7 @@ void nocomment(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
+/* Built-in command: print line counts of file */
 void lc(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr, "lc - print line counts of file\nUsage: lc [filename]\n",
@@ -190,6 +226,7 @@ void lc(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
+/* Built-in command: print first ten lines of file */
 void firsten(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -202,6 +239,7 @@ void firsten(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
+/* Built-in command: print most ferequent word in a file */
 void mostword(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -221,12 +259,18 @@ void mostword(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
-void run_command(char *command, int *in_pipe, int *out_pipe) {
+/* Runs your command plus you can use built-in commands declared above
+ *
+ * You can redirect STDIN and STDOUT of your command using pipes with *in_pipe
+ * and *out_pipe ,
+ * set them to NULL if you don't want to redirect STDIN and STDOUT.
+ * */
+void run_command_with_splitting(char *command, int *in_pipe, int *out_pipe) {
   char *argv[ARGS_LIMIT];
   split_to_argv(command, argv);
 
   if (!strcmp(argv[0], "exit"))
-    terminate = 1;
+    exit(0);
   else if (!strcmp(argv[0], "cd")) {
     cd(argv[1]);
   } else if (!strcmp(argv[0], "fw")) {
@@ -246,18 +290,32 @@ void run_command(char *command, int *in_pipe, int *out_pipe) {
   }
 }
 
+/* Same as 'run_function_with_pipeline(...)' with in_pipe and out_pipe set as
+ * NULL, that means your commands will be run using pipeline support but, at
+ * start, input is STDIN and output is STDOUT.
+ */
 void run_command_with_pipeline(char *const *pipe_cmds) {
-  run_function_with_pipeline(run_command, pipe_cmds, NULL, NULL);
+  run_function_with_pipeline(run_command_with_splitting, pipe_cmds, NULL, NULL);
 }
 
-//
+// main functions
+
+/* Ctrl+C handler */
 void sigint_handler(int i) {
   rl_replace_line("", 0);
   rl_redisplay();
   rl_done = 1;
 }
+
+/* A function that does nothing.
+ * Used to bypass readline events.
+ */
 int dummy_event(void) { return 0; }
 
+/* init
+ * Should be run at the start of easy-sh
+ * Used for initialization of global variables
+ */
 void init() {
   rl_event_hook = dummy_event;
   signal(SIGINT, sigint_handler);
@@ -279,9 +337,8 @@ int main(int argc, char *argv[]) {
   read_history(hist_path);
   using_history();
 
-  // char *cmd_argv[ARGS_LIMIT];
   char *pipe_cmds[PIPE_LIMIT];
-  while (!terminate) {
+  while (1) {
     char *input = readline(prompt);
     if (input == NULL)
       break;
@@ -292,12 +349,9 @@ int main(int argc, char *argv[]) {
     write_history(hist_path);
 
     split_pipe_to_commands(input, pipe_cmds);
-    // split_to_argv(pipe_cmds[0], cmd_argv);
     if (pipe_cmds[1] == NULL) {
-      // run_command(cmd_argv, NULL, NULL);
-      run_command(pipe_cmds[0], NULL, NULL);
+      run_command_with_splitting(pipe_cmds[0], NULL, NULL);
     } else {
-      // run_command_with_pipeline(cmd_argv, pipe_cmds);
       run_command_with_pipeline(pipe_cmds);
     }
     free(input);
