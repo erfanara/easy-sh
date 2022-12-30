@@ -97,7 +97,12 @@ void run_function(int (*executor)(const char *file, char *const *argv),
       dup2(out_pipe[1], STDOUT_FILENO);
       close(out_pipe[1]);
     }
-    (*executor)(argv[0], argv);
+    int err = (*executor)(argv[0], argv);
+    if (err) {
+      fcprintf(stderr, strerror(errno), RED, RESET);
+      exit(-1);
+    }
+    exit(0);
   } else {
     /* parent waiting */
     pid = wait(&status);
