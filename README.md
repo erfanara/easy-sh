@@ -41,4 +41,5 @@ Super Extra:
 - [ ] One-file code (is a good idea?)
 - [ ] Add tab completion for Built-in commands
 - [ ] Add comment and doc
+- [x] Add pipeline support for Built-in commands
 

@@ -17,6 +17,11 @@
 #define ARGS_LIMIT 5000
 #define PIPE_LIMIT 100
 
+// init in main
+char cwd[PATH_MAX];
+char prompt[PATH_MAX + 11];
+int terminate = 0;
+
 void fcprintf(FILE *restrict stream, char *str, char *color,
               char *after_color) {
   fprintf(stream, "%s%s%s\n", color, str, after_color);
@@ -80,37 +85,43 @@ void run_function(int (*f)(const char *file, char *const *argv),
     }
   }
 }
-void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
+
+void run_with_exec(char *const *argv, int *in_pipe, int *out_pipe) {
   run_function(execvp, argv, in_pipe, out_pipe);
 }
 
 // TODO: Fix function signature
-void run_command_with_pipe(char *const *first_cmd_argv,
-                           char *const *pipe_cmds) {
+void run_function_with_pipeline(void (*f)(char *const *argv, int *in_pipe,
+                                          int *out_pipe),
+                                char *const *first_cmd_argv,
+                                char *const *pipe_cmds, int *in_pipe,
+                                int *out_pipe) {
   char *cmd_argv[ARGS_LIMIT];
   int pipe_fd0[2], pipe_fd1[2], i = 0;
   if (pipe(pipe_fd0))
     fcprintf(stderr, strerror(errno), RED, RESET);
 
-  run_command(first_cmd_argv, NULL, pipe_fd0);
+  f(first_cmd_argv, in_pipe, pipe_fd0);
 
   for (i = 1; pipe_cmds[i + 1] != NULL; i++) {
     if (pipe(pipe_fd1))
       fcprintf(stderr, strerror(errno), RED, RESET);
 
     split_to_argv(pipe_cmds[i], cmd_argv);
-    run_command(cmd_argv, pipe_fd0, pipe_fd1);
+    f(cmd_argv, pipe_fd0, pipe_fd1);
 
     pipe_fd0[0] = pipe_fd1[0];
     pipe_fd0[1] = pipe_fd1[1];
   }
   split_to_argv(pipe_cmds[i], cmd_argv);
-  run_command(cmd_argv, pipe_fd0, NULL);
+  f(cmd_argv, pipe_fd0, out_pipe);
 }
 
 // Built-ins
 void cd(char *path) {
   int status = chdir(path);
+  getcwd(cwd, PATH_MAX);
+  sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
   if (status)
     fcprintf(stderr, strerror(errno), RED, RESET);
 }
@@ -138,7 +149,47 @@ int fw(const char *file, char *const *argv) {
   }
 }
 
-void mostword(char *file) {
+void singline(char *file, int *in_pipe, int *out_pipe) {
+  if (!file) {
+    printf("Singline - print all file content without any space or "
+           "whitespaces\nUsage: singline [filename]\n");
+  } else {
+    char *cmd_argv[] = {"sed", "-z", "s/\\s//g", file, NULL};
+    run_with_exec(cmd_argv, in_pipe, out_pipe);
+    printf("\n");
+  }
+}
+
+void nocomment(char *file, int *in_pipe, int *out_pipe) {
+  if (!file) {
+    printf("Nocomment - print all file content but lines starting with "
+           "#\nUsage: nocomment [filename]\n");
+  } else {
+    char *cmd_argv[] = {"grep", "-v", "\\s*#", file, NULL};
+    run_with_exec(cmd_argv, in_pipe, out_pipe);
+  }
+}
+
+void lc(char *file, int *in_pipe, int *out_pipe) {
+  if (!file) {
+    printf("lc - print line counts of file\nUsage: lc [filename]\n");
+  } else {
+    char *cmd_argv[] = {"wc", "-l", file, NULL};
+    run_with_exec(cmd_argv, in_pipe, out_pipe);
+  }
+}
+
+void firsten(char *file, int *in_pipe, int *out_pipe) {
+  if (!file) {
+    printf("firsten - print first ten lines of file\nUsage: firsten "
+           "[filename]\n");
+  } else {
+    char *cmd_argv[] = {"head", "-n10", file, NULL};
+    run_with_exec(cmd_argv, in_pipe, out_pipe);
+  }
+}
+
+void mostword(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     printf("mostword - print most ferequent word in a file "
            "\nUsage: mostword [filename]\n");
@@ -148,48 +199,37 @@ void mostword(char *file) {
     char *pipe_cmds[PIPE_LIMIT];
     char *first_cmd_argv[] = {"cat", file, NULL};
     split_pipe_to_commands(cmd, pipe_cmds);
-    run_command_with_pipe(first_cmd_argv, pipe_cmds);
+    run_function_with_pipeline(run_with_exec, first_cmd_argv, pipe_cmds,
+                               in_pipe, out_pipe);
   }
 }
 
-void singline(char *file) {
-  if (!file) {
-    printf("Singline - print all file content without any space or "
-           "whitespaces\nUsage: singline [filename]\n");
+void run_command(char *const *argv, int *in_pipe, int *out_pipe) {
+  if (!strcmp(argv[0], "exit"))
+    terminate = 1;
+  else if (!strcmp(argv[0], "cd")) {
+    cd(argv[1]);
+  } else if (!strcmp(argv[0], "fw")) {
+    run_function(fw, argv, in_pipe, out_pipe);
+  } else if (!strcmp(argv[0], "singline")) {
+    singline(argv[1], in_pipe, out_pipe);
+  } else if (!strcmp(argv[0], "nocomment")) {
+    nocomment(argv[1], in_pipe, out_pipe);
+  } else if (!strcmp(argv[0], "lc")) {
+    lc(argv[1], in_pipe, out_pipe);
+  } else if (!strcmp(argv[0], "firsten")) {
+    firsten(argv[1], in_pipe, out_pipe);
+  } else if (!strcmp(argv[0], "mostword")) {
+    mostword(argv[1], in_pipe, out_pipe);
   } else {
-    char *cmd_argv[] = {"sed", "-z", "s/\\s//g", file, NULL};
-    run_command(cmd_argv, NULL, NULL);
-    printf("\n");
+    run_with_exec(argv, in_pipe, out_pipe);
   }
 }
 
-void nocomment(char *file) {
-  if (!file) {
-    printf("Nocomment - print all file content but lines starting with "
-           "#\nUsage: nocomment [filename]\n");
-  } else {
-    char *cmd_argv[] = {"grep", "-v", "\\s*#", file, NULL};
-    run_command(cmd_argv, NULL, NULL);
-  }
-}
-
-void lc(char *file) {
-  if (!file) {
-    printf("lc - print line counts of file\nUsage: lc [filename]\n");
-  } else {
-    char *cmd_argv[] = {"wc", "-l", file, NULL};
-    run_command(cmd_argv, NULL, NULL);
-  }
-}
-
-void firsten(char *file) {
-  if (!file) {
-    printf("firsten - print first ten lines of file\nUsage: firsten "
-           "[filename]\n");
-  } else {
-    char *cmd_argv[] = {"head", "-n10", file, NULL};
-    run_command(cmd_argv, NULL, NULL);
-  }
+void run_command_with_pipeline(char *const *first_cmd_argv,
+                               char *const *pipe_cmds) {
+  run_function_with_pipeline(run_command, first_cmd_argv, pipe_cmds, NULL,
+                             NULL);
 }
 
 //
@@ -207,9 +247,9 @@ int main(int argc, char *argv[]) {
   char *cmd_argv[ARGS_LIMIT];
   char *pipe_cmds[PIPE_LIMIT];
 
-  // init cwd (current working directory)
-  char cwd[PATH_MAX];
+  // init cwd (current working directory) and prompt
   getcwd(cwd, PATH_MAX);
+  sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
 
   rl_bind_key('\t', rl_complete);
 
@@ -219,10 +259,7 @@ int main(int argc, char *argv[]) {
   read_history(hist_path);
   using_history();
 
-  char prompt[PATH_MAX + 11];
-  sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
-
-  while (1) {
+  while (!terminate) {
     char *input = readline(prompt);
     if (input == NULL)
       break;
@@ -234,30 +271,10 @@ int main(int argc, char *argv[]) {
 
     split_pipe_to_commands(input, pipe_cmds);
     split_to_argv(pipe_cmds[0], cmd_argv);
-    if (!strcmp(cmd_argv[0], "exit"))
-      break;
-    else if (!strcmp(cmd_argv[0], "cd")) {
-      cd(cmd_argv[1]);
-      getcwd(cwd, PATH_MAX);
-      sprintf(prompt, "%s%s%s$ ", GRN, cwd, RESET);
-    } else if (!strcmp(cmd_argv[0], "fw")) {
-      run_function(fw, cmd_argv, NULL, NULL);
-    } else if (!strcmp(cmd_argv[0], "singline")) {
-      singline(cmd_argv[1]);
-    } else if (!strcmp(cmd_argv[0], "nocomment")) {
-      nocomment(cmd_argv[1]);
-    } else if (!strcmp(cmd_argv[0], "lc")) {
-      lc(cmd_argv[1]);
-    } else if (!strcmp(cmd_argv[0], "firsten")) {
-      firsten(cmd_argv[1]);
-    } else if (!strcmp(cmd_argv[0], "mostword")) {
-      mostword(cmd_argv[1]);
+    if (pipe_cmds[1] == NULL) {
+      run_command(cmd_argv, NULL, NULL);
     } else {
-      if (pipe_cmds[1] == NULL) {
-        run_command(cmd_argv, NULL, NULL);
-      } else {
-        run_command_with_pipe(cmd_argv, pipe_cmds);
-      }
+      run_command_with_pipeline(cmd_argv, pipe_cmds);
     }
     free(input);
   }
