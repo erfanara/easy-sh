@@ -9,7 +9,7 @@ Just another shell using readline that just works. This project is for education
 - Line editing using readline (all key handlers readline provides now works: ctrl+e , ctrl+a , ctrl+w, ...)
 - Save commands history in `.hist` file using readline (command history navigation using arrow keys)
 - Handle ctrl+c with readline
-- Easily add your built-in functions
+- Easily add your built-in functions (functions, commands, commands with pipelining, ...)
 - Pipeline support
 - Everything in one file (~250 lines of code)
 
@@ -53,12 +53,11 @@ Extra:
 
 Super Extra:
 
-- [ ] Fix todos and test for bugs
 - [x] Clean up and refactor project 
 - [x] Add Features sections in README.md
-- [ ] Add tab completion for Built-in commands
 - [x] Add comment and doc
 - [x] Add pipeline support for Built-in commands
+- [ ] Add tab completion for Built-in commands
 - [ ] Refactor built-in commands into builtins.c and make it easier to add new commands
 - [ ] alias 
 

@@ -12,13 +12,13 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
-#define RED   "\x1B[31m"
-#define GRN   "\x1B[32m"
-#define YEL   "\x1B[33m"
-#define BLU   "\x1B[34m"
-#define MAG   "\x1B[35m"
-#define CYN   "\x1B[36m"
-#define WHT   "\x1B[37m"
+#define RED "\x1B[31m"
+#define GRN "\x1B[32m"
+#define YEL "\x1B[33m"
+#define BLU "\x1B[34m"
+#define MAG "\x1B[35m"
+#define CYN "\x1B[36m"
+#define WHT "\x1B[37m"
 #define RESET "\x1B[0m"
 
 #define ARGS_LIMIT 5000
@@ -75,9 +75,10 @@ void split_pipe_to_commands(char *str, char *argv[]) {
  * This function does not use any parser function, thus you need to split your
  * command string to argv before passing it.
  */
+pid_t pid = -1;
 void run_function(int (*executor)(const char *file, char *const *argv),
                   char *const *argv, int *in_pipe, int *out_pipe) {
-  pid_t pid = fork();
+  pid = fork();
   int status;
 
   if (pid < 0) {
@@ -170,7 +171,8 @@ void cd(char *path) {
     fcprintf(stderr, strerror(errno), RED, RESET);
 }
 
-/* Built-in command: print first word of file */
+/* Example of running a function
+ * Built-in command: print first word of file */
 int fw(const char *file, char *const *argv) {
   if (!argv[1]) {
     fcprintf(stderr, "fw - print first word of file\nUsage: fw [filename]\n",
@@ -183,19 +185,37 @@ int fw(const char *file, char *const *argv) {
       exit(2);
     } else {
       char ch;
-      fscanf(inp, "%c", &ch);
-      while (ch != ' ') {
-        printf("%c", ch);
-        fscanf(inp, "%c", &ch);
-      }
-      printf("\n");
+      do {
+        // bypass whitespaces
+        do {
+          ch = fgetc(inp);
+        } while (ch == ' ' || ch == '\t');
+        // print first word of line
+        int word_found = 0;
+        if (ch != ' ' && ch != '\t' && ch != '\n' && ch != EOF) {
+          printf("%c", ch);
+          ch = fgetc(inp);
+          word_found = 1;
+        }
+        while (ch != ' ' && ch != '\t' && ch != '\n' && ch != EOF) {
+          printf("%c", ch);
+          ch = fgetc(inp);
+        }
+        // bypass rest of line
+        while (ch != '\n' && ch != EOF)
+          ch = fgetc(inp);
+        if (word_found)
+          printf("\n");
+        fflush(stdout);
+      } while (ch != EOF);
       fclose(inp);
       exit(0);
     }
   }
 }
 
-/* Built-in command: print all file content without any space or whitespaces */
+/* Example of running command
+ * Built-in command: print all file content without any space or whitespaces */
 void singline(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -209,7 +229,8 @@ void singline(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
-/* Built-in command: print all file content but lines starting with '#' */
+/* Example of running command
+ * Built-in command: print all file content but lines starting with '#' */
 void nocomment(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -222,7 +243,8 @@ void nocomment(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
-/* Built-in command: print line counts of file */
+/* Example of running command
+ *  Built-in command: print line counts of file */
 void lc(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr, "lc - print line counts of file\nUsage: lc [filename]\n",
@@ -233,7 +255,8 @@ void lc(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
-/* Built-in command: print first ten lines of file */
+/* Example of running command
+ *  Built-in command: print first ten lines of file */
 void firsten(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -246,7 +269,8 @@ void firsten(char *file, int *in_pipe, int *out_pipe) {
   }
 }
 
-/* Built-in command: print most ferequent word in a file */
+/* Example of running pipeline command
+ *  Built-in command: print most ferequent word in a file */
 void mostword(char *file, int *in_pipe, int *out_pipe) {
   if (!file) {
     fcprintf(stderr,
@@ -312,6 +336,8 @@ void sigint_handler(int i) {
   rl_replace_line("", 0);
   rl_redisplay();
   rl_done = 1;
+  if (pid != -1 && pid != 0)
+    kill(pid, SIGTERM);
 }
 
 /* A function that does nothing.
