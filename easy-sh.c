@@ -164,6 +164,10 @@ void run_function_with_pipeline(
     pipe_fd0[1] = pipe_fd1[1];
   }
   executor_with_spliting(pipe_cmds[i], pipe_fd0, out_pipe);
+  close(pipe_fd0[0]);
+  close(pipe_fd0[1]);
+  close(pipe_fd1[0]);
+  close(pipe_fd1[1]);
 }
 
 // Built-ins
